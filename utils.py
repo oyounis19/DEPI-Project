@@ -1,7 +1,7 @@
 # from groq import Groq
 
 # client = Groq(
-#     api_key="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",
+#     api_key="gsk_*",
 # )
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, Pipeline
 from peft import PeftModel
@@ -23,7 +23,7 @@ base_model = AutoModelForCausalLM.from_pretrained("microsoft/Phi-3.5-mini-instru
 # Combine the model with the LORA adapter
 model_with_lora = PeftModel.from_pretrained(base_model, "oyounis/Phi-3.5-instruct-pubmedQA")
 
-pipe = Pipeline("text-generation", 
+pipe = Pipeline("text-generation",
                 model=model_with_lora,
                 tokenizer=tokenizer
 )
