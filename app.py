@@ -59,7 +59,7 @@ if prompt := st.chat_input("Ask me medical stuff..."):
                 context += f"**Document {i+1}**\n\n"
                 context += chunk.page_content
                 context += "\n\n"
-            st.info("Context retrieved: ", context)
+            st.info("Context retrieved: " + context)
             messages_for_model[-1]["content"] = user_template.format(context=context[:-4], query=prompt)
 
         # Call the model with the entire conversation history
