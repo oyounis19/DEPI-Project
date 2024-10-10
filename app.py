@@ -4,7 +4,6 @@ import streamlit as st
 from utils import setup_pipeline, setup_faiss, needs_context, sys_prompt, sys_prompt_normal, user_template
 
 load_dotenv()
-# get the api key from the environment variables
 api_key = os.getenv("GROQ_API_KEY")
 
 generation_args = {
@@ -44,8 +43,10 @@ if prompt := st.chat_input("Ask me medical stuff..."):
     with st.spinner("Thinking..."):
         try:
             needs_context_bool = needs_context(prompt, api_key)
+            # show in the console
+            print("needs_context_bool: ", needs_context_bool)
         except Exception as e:
-            needs_context_bool = False
+            needs_context_bool = True
             st.error(f"LLama API call failed with error: {e}")
 
         messages_for_model = [{"role": "system", "content": sys_prompt if needs_context_bool else sys_prompt_normal}] + [
@@ -58,7 +59,7 @@ if prompt := st.chat_input("Ask me medical stuff..."):
                 context += f"**Document {i+1}**\n\n"
                 context += chunk.page_content
                 context += "\n\n"
-
+            print("context: \n", context)
             messages_for_model[-1]["content"] = user_template.format(context=context[:-4], query=prompt)
 
         # Call the model with the entire conversation history
