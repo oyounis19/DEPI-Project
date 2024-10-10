@@ -25,7 +25,7 @@ Instructions:
 - Be concise and accurate.
 - Do not be verbose.
 - Keep responses clear.
-- You must format the response in Markdown."""
+- Format the response in a Markdown format."""
 
 user_template = """context:
 {context}
