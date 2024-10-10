@@ -1,0 +1,13 @@
+pyngrok
+streamlit
+peft
+bitsandbytes
+pyngrok
+langchain
+langchain_community
+langchain_core
+langchain_huggingface
+faiss-cpu
+sentence-transformers
+pypdf
+gdown
