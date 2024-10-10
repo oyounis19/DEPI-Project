@@ -1,5 +1,7 @@
 import os
 import gdown
+import json
+from groq import Groq
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, pipeline
 from peft import PeftModel
@@ -8,21 +10,84 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
 
-sys_prompt = """You are a professional medical assistant trained to provide accurate and concise medical information based strictly on the documents provided. Do not include any statements like "based on the documents" or similar phrases in the output. Only give a direct concise answer to the user's question using the information from the documents.
+
+sys_prompt = """You are a professional medical assistant trained to provide accurate and concise medical information based strictly on the documents provided (if it is relevant). Do not include any statements like "based on the documents" or similar phrases in the output. Only give a direct concise answer to the user's question using the information from the documents.
 Instructions:
-- Base all your responses on the information from the documents provided.
-- If the user asks something that doesn't need context, just ignore the context provided, and just respond normally, the user doesn't know anything about the context.
-- If the answer is not available in the documents, simply state, "Unfortunately I can't assist with that."
+- If the user asks something that doesn't need context, then ignore the context provided, and just respond normally, the user doesn't know anything about the context.
+- If the answer is not available in the documents and it is a medical question, simply state, "Unfortunately I can't assist with that."
 - Keep responses clear and medically accurate.
 - Do not be verbose. Keep responses concise.
 - Do not exceed 200 tokens per response.
-- Format the response in Markdown.
+- You must format the response in Markdown.
 """
+sys_prompt_normal = """You are a helpful medical assistant.
+Instructions:
+- Be concise and accurate.
+- Do not be verbose.
+- Keep responses clear.
+- You must format the response in Markdown."""
 
 user_template = """context:
 {context}
 Question:
 {query}"""
+
+groq_sys_rompt = """you are a classifier that must respond in json format only.
+your task is to classify the query under <query> tag to one of the following classes in json only:
+{
+"answer": "yes"
+}
+or
+{
+"answer": "no"
+}
+Your classification must be based on that should this query be sent to a RAG (retrieval system) which will get related documents to the query and be sent to a llm or should it be sent directly to the llm.
+If the query is a general question that can be answered by the llm directly, then the answer should be "no".
+If the query is a specific **medical** question that requires context from the documents, then the answer should be "yes".
+
+Example:
+Query:
+"What is the treatment for diabetes?"
+
+Answer:
+{
+"answer": "yes"
+}
+
+Example:
+Query:
+"Hi, what is your name?"
+
+Answer:
+{
+"answer": "no"
+}
+
+####
+Your turn to classify the query.
+"""
+def needs_context(query, api_key):
+    client = Groq(api_key=api_key)
+    completion = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": groq_sys_rompt
+            },
+            {
+                "role": "user",
+                "content": query
+            }
+        ],
+        temperature=0,
+        max_tokens=520,
+        top_p=1,
+        stream=False,
+        stop=None,
+    )
+    return json.loads(completion.choices[0].message.content)["answer"] == "yes"
+
 
 def download_db():
     # make vector directory
@@ -63,7 +128,7 @@ def setup_pipeline():
 
 def setup_faiss():
     download_db()
-    
+
     embedder = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
     db = FAISS.load_local("vectorstore", embedder, allow_dangerous_deserialization=True)

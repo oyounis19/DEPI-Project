@@ -1,5 +1,11 @@
+import os
+from dotenv import load_dotenv
 import streamlit as st
-from utils import setup_pipeline, setup_faiss, sys_prompt, user_template
+from utils import setup_pipeline, setup_faiss, needs_context, sys_prompt, sys_prompt_normal, user_template
+
+load_dotenv()
+# get the api key from the environment variables
+api_key = os.getenv("GROQ_API_KEY")
 
 generation_args = {
     "max_new_tokens": 512,
@@ -35,18 +41,26 @@ if prompt := st.chat_input("Ask me medical stuff..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    messages_for_model = [{"role": "system", "content": sys_prompt}] + [
-        {"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages
-    ]
-    context = ""
-    for i, chunk in enumerate(db.similarity_search(prompt, k=2)):
-        context += f"**Document {i+1}**\n\n"
-        context += chunk.page_content
-        context += "\n\n"
-
-    messages_for_model[-1]["content"] = user_template.format(context=context[:-4], query=prompt)
-
     with st.spinner("Thinking..."):
+        try:
+            needs_context_bool = needs_context(prompt, api_key)
+        except Exception as e:
+            needs_context_bool = False
+            st.error(f"LLama API call failed with error: {e}")
+
+        messages_for_model = [{"role": "system", "content": sys_prompt if needs_context_bool else sys_prompt_normal}] + [
+            {"role": msg["role"], "content": msg["content"]} for msg in st.session_state.messages
+        ]
+
+        if needs_context_bool:
+            context = ""
+            for i, chunk in enumerate(db.similarity_search(prompt, k=2)):
+                context += f"**Document {i+1}**\n\n"
+                context += chunk.page_content
+                context += "\n\n"
+
+            messages_for_model[-1]["content"] = user_template.format(context=context[:-4], query=prompt)
+
         # Call the model with the entire conversation history
         response = pipe(messages_for_model, **generation_args)[0]['generated_text']
         
