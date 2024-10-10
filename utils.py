@@ -42,7 +42,7 @@ or
 }
 Your classification must be based on that should this query be sent to a RAG (retrieval system) which will get related documents to the query and be sent to a llm or should it be sent directly to the llm.
 If the query is a general question that can be answered by the llm directly, then the answer should be "no".
-If the query is a specific **medical** question that requires context from the documents, then the answer should be "yes".
+If the query is a specific **medical**, **nutrition** related question that requires context from the documents, then the answer should be "yes".
 
 Example:
 Query:
